@@ -1,0 +1,8 @@
+com.example.detectioncar
+com.example.detectioncar.bootstrap
+com.example.detectioncar.config
+com.example.detectioncar.controller
+com.example.detectioncar.dto
+com.example.detectioncar.model
+com.example.detectioncar.repo
+com.example.detectioncar.util
