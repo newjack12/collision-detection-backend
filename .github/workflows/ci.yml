@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test_and_analysis:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java: [17, 21]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+          cache: maven
+
+      - name: Run unit tests
+        run: mvn -B test
+
+      - name: Static analysis (SpotBugs)
+        run: mvn -B com.github.spotbugs:spotbugs-maven-plugin:4.8.6.6:spotbugs
+
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+
+  release:
+    needs: test_and_analysis
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: maven
+
+      - name: Build jar
+        run: mvn -B -DskipTests package
+
+      - name: Create GitHub Release (auto changelog)
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: target/*.jar
+
+  docs:
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: maven
+
+      - name: Generate Javadoc
+        run: mvn -B -DskipTests javadoc:javadoc
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: target/site/apidocs
